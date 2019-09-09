@@ -1,0 +1,12 @@
+[Unit]
+Description=s3proxy
+After=network.target
+
+[Service]
+User=foo
+Group=foo
+ExecStart=/home/foo/bin/s3proxy -config /home/foo/etc/s3proxy.conf
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
