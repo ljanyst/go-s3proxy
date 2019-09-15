@@ -33,6 +33,7 @@ type WebOpts struct {
 }
 
 type BucketOpts struct {
+	Bucket string // Bucket name, if not specified, it's the same as the key
 	Region string // AWS region
 	Key    string // AWS key
 	Secret string // AWS secret
