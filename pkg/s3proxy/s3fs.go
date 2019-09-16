@@ -68,7 +68,7 @@ td.md {
 <table>
   {{range .Objects}}
     <tr>
-      <td class="name"><a href="/{{$.BucketName}}/{{.Key}}">{{.Key}}</a></td>
+      <td class="name"><a href="/{{$.MountName}}/{{.Key}}">{{.Key}}</a></td>
       <td class="md">{{.LastModified}}</td>
     </tr>
   {{end}}
@@ -94,6 +94,7 @@ type ListingItem struct {
 
 type Listing struct {
 	BucketName string
+	MountName  string
 	Objects    []ListingItem
 }
 
@@ -101,7 +102,7 @@ const CHUNK_SIZE = 1024 * 1024 * 1024
 
 type S3Fs struct {
 	clients map[string]*s3.S3
-	mounts  map[string]string
+	buckets map[string]string
 }
 
 type S3Chunk struct {
@@ -263,7 +264,7 @@ func (f *S3File) Sys() interface{} {
 func NewS3Fs(bucketOpts map[string]BucketOpts) http.FileSystem {
 	fs := new(S3Fs)
 	fs.clients = make(map[string]*s3.S3)
-	fs.mounts = make(map[string]string)
+	fs.buckets = make(map[string]string)
 
 	for k, v := range bucketOpts {
 		region := v.Region
@@ -284,12 +285,12 @@ func NewS3Fs(bucketOpts map[string]BucketOpts) http.FileSystem {
 			continue
 		}
 		fs.clients[bucket] = s3.New(sess)
-		fs.mounts[k] = bucket
+		fs.buckets[k] = bucket
 	}
 	return fs
 }
 
-func (fs S3Fs) getListing(bucket string) (http.File, error) {
+func (fs S3Fs) getListing(bucket, mount string) (http.File, error) {
 	cl, ok := fs.clients[bucket]
 	if !ok {
 		return nil, os.ErrNotExist
@@ -312,6 +313,7 @@ func (fs S3Fs) getListing(bucket string) (http.File, error) {
 
 	var l Listing
 	l.BucketName = bucket
+	l.MountName = mount
 
 	for _, item := range result.Contents {
 		l.Objects = append(l.Objects, ListingItem{*item.Key, *item.LastModified})
@@ -347,19 +349,19 @@ func (fs S3Fs) getObject(bucket, key string) (http.File, error) {
 func (fs S3Fs) Open(filePath string) (http.File, error) {
 	cleaned := path.Clean(filePath)
 	components := strings.Split(cleaned[1:], "/")
-	name := components[0]
+	mount := components[0]
 	key := ""
 	if len(components) > 1 {
 		key = "/" + path.Join(components[1:]...)
 	}
 
-	bucket, ok := fs.mounts[name]
+	bucket, ok := fs.buckets[mount]
 	if !ok {
 		return nil, os.ErrNotExist
 	}
 
 	if key == "" {
-		return fs.getListing(bucket)
+		return fs.getListing(bucket, mount)
 	}
 
 	return fs.getObject(bucket, key)
