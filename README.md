@@ -2,9 +2,10 @@ S3Proxy
 =======
 
 S3Proxy, as the name suggests, is a proxy server that allows you to access your
-authenticated S3 resources using https and HTTP BasicAuth. It prefetches a 1MB
+authenticated S3 resources using HTTPS and HTTP BasicAuth. It prefetches a 1MB
 ahead of every new read that does not match the currently pre-fetched data chunk
-and position.
+and position. This works nicely with sequential downloads and with video
+streaming.
 
 You can configure the HTTP passwords globally using a tool like Apache's
 `htpasswd`:
@@ -15,10 +16,14 @@ You can configure the HTTP passwords globally using a tool like Apache's
 Where: `-c` stands for create, `-B` stands for bcrypt.
 
 You can also configure as many buckets as you want. While accessing the data,
-the first component of the path is assumed to be the bucket name, while the
-remaining components are assumed to constitute a key within that bucket.
+the first component of the path is assumed to be the mount point name, while the
+remaining components are assumed to constitute a key within the bucket that the
+mount point is associated with.
 
-Here's an example config file:
+Below is an example config file. In it, you can see a map of mount points to
+buckets. If the bucket name in the map item is omited, it is assumed to be
+the same as the mount point name. If the region is omited, it is asumed to be
+`us-west-1`.
 
 ```json
 {
@@ -43,7 +48,8 @@ Here's an example config file:
       "Key": "asdf",
       "Secret": "foo"
     },
-    "test-bucket-2": {
+    "data": {
+      "Bucket": "test-bucket-2",
       "Region": "eu-west-1",
       "Key": "asdf",
       "Secret": "foo"
